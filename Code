@@ -1,0 +1,56 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+vaccine2023 = pd.read_excel('2023_Data_Vaccine.xlsx', sheet_name='Original')
+vaccine2022 = pd.read_excel('Data_2022_Vaccine.xlsx', sheet_name='Sheet1')
+vaccine2023.info()
+vaccine2022.info()
+vaccine2022.head()
+vaccine2022['Date']=pd.to_datetime(vaccine2022['Date'])
+vaccine2022['Date']=vaccine2022['Date'].replace('12/12/021','12/12/2021')
+vaccine2022['Date']=pd.to_datetime(vaccine2022['Date'])
+vaccine2022.info()
+vaccine = pd.merge(vaccine2023, vaccine2022,how='outer')
+vaccine = vaccine.rename(columns={'Dose (mg) 0=unk':'Dose(mg)',
+                                          ' Sex (F or M) 1=F, 2=M':'Sex',
+                                          'Medication 1=APAP, 2=IBU':'Medication',
+                                         'Dosage form 1=liquid, 2=pills, 3=other, 4=unk':'Dosage Form',
+                                         'Outcome (VDL code)':'Outcome(VDL)',
+                                         'Reason for TE (VDL code)':'Reason For TE(VDL)',
+                                         'Due to med shortage 1=YES, 2=NO':'Due to med shortage'})
+vaccine.head()
+vaccine['Sex']=vaccine['Sex'].apply(lambda x: 'Female' if x==1 else 'Male')
+vaccine['Medication']=vaccine['Medication'].apply(lambda x: 'APAP' if x ==1 else 'IBU')
+vaccine['Due to med shortage']=vaccine['Due to med shortage'].apply(lambda x: 'Yes' if x ==1 else 'No')
+vaccine.head()
+vaccine.loc[:][['Date','Case #','Dose(mg)','Age (months)','Sex','Weight (kg)','Reason For TE(VDL)','Outcome(VDL)','1=acute 2=chronic']]
+vaccine.groupby('Reason For TE(VDL)')['Case #'].count().plot.bar()
+vaccine['Date'] = pd.to_datetime(vaccine['Date'], errors='coerce')
+vaccine['Year'] = vaccine['Date'].dt.year
+grouped_data = vaccine.groupby(['Year', 'Reason For TE(VDL)'])['Case #'].count().unstack()
+ax = grouped_data.plot(kind='bar', figsize=(12, 6))
+
+grouped_data = vaccine.groupby(['Reason For TE(VDL)', 'Year'])['Case #'].count().unstack()
+grouped_data.columns = grouped_data.columns.astype(int)
+ax = grouped_data.plot(kind='bar', figsize=(12, 6))
+
+vaccine['Date'] = pd.to_datetime(vaccine['Date'])
+def define_period(date):
+    if (date >= pd.Timestamp('2021-11-01')) and (date <= pd.Timestamp('2022-03-31')):
+        return '2022'
+    else:
+        return '2023'
+vaccine['Custom Period'] = vaccine['Date'].apply(define_period)
+grouped_data = vaccine.groupby(['Reason For TE(VDL)', 'Custom Period'])['Case #'].count().unstack()
+grouped_data.columns = grouped_data.columns.astype(int)
+ax = grouped_data.plot(kind='bar', figsize=(15, 10))
+
+plt.title('Count of Cases by Period and Reason for TE(VDL)')
+plt.xlabel('Reasons For TE(VDL)')
+plt.ylabel('Count of Cases')
+plt.xticks(rotation=45, ha='right') 
+plt.legend(title='Periods')
+plt.grid(axis='y') 
+plt.tight_layout()
+
+plt.show()
